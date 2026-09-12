@@ -61,43 +61,23 @@
     </button>
 
     <script>
-        const GITHUB_CONFIG = {
-            owner: 'kh8-y12-english',
-            repo: 'y12-english-',
-            filePath: 'index.html',
-            branch: 'main',
+        const CONFIG = {
             password: 'englishlanguage123'
         };
 
         let isAuthenticated = false;
 
-        function utf8_to_b64(str) {
-            return window.btoa(unescape(encodeURIComponent(str)));
-        }
-
         function toggleEditMode() {
             if (!isAuthenticated) {
                 const input = prompt("Enter the password to edit this page:");
-                if (input === GITHUB_CONFIG.password) {
-                    let savedToken = localStorage.getItem('site_editor_token');
-                    
-                    if (!savedToken) {
-                        savedToken = prompt("First-time setup: Paste your GitHub Personal Access Token (ghp_...):");
-                        if (savedToken) {
-                            localStorage.setItem('site_editor_token', savedToken.trim());
-                        } else {
-                            alert("Token is required to save edits.");
-                            return;
-                        }
-                    }
-                    
+                if (input === CONFIG.password) {
                     isAuthenticated = true;
                     enableEditing();
                 } else {
                     alert("Incorrect password.");
                 }
             } else {
-                pushChangesToGitHub();
+                pushChanges();
             }
         }
 
@@ -114,15 +94,8 @@
             btn.style.backgroundColor = "#2b6cb0";
         }
 
-        async function pushChangesToGitHub() {
+        async function pushChanges() {
             const btn = document.getElementById('edit-btn');
-            const token = localStorage.getItem('site_editor_token');
-
-            if (!token) {
-                alert("No saved token found. Please reload and log in again.");
-                return;
-            }
-
             btn.innerText = "⏳ Saving...";
             btn.disabled = true;
 
@@ -134,49 +107,28 @@
             });
 
             try {
-                const getFileUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
-                
-                const getResponse = await fetch(getFileUrl, {
-                    headers: { 
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
+                const getRes = await fetch('https://api.github.com/repos/kh8-y12-english/y12-english-/contents/index.html');
+                const fileData = await getRes.json();
 
-                if (!getResponse.ok) {
-                    const errBody = await getResponse.json().catch(() => ({}));
-                    if (getResponse.status === 401) localStorage.removeItem('site_editor_token');
-                    throw new Error(`GitHub Error ${getResponse.status}: ${errBody.message || getResponse.statusText}`);
-                }
-                
-                const fileData = await getResponse.json();
                 const updatedHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
-                const encodedContent = utf8_to_b64(updatedHTML);
 
-                const putResponse = await fetch(getFileUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
+                const saveRes = await fetch('/.netlify/functions/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: 'Update page content via inline editor',
-                        content: encodedContent,
-                        sha: fileData.sha,
-                        branch: GITHUB_CONFIG.branch
+                        html: updatedHTML,
+                        sha: fileData.sha
                     })
                 });
 
-                if (putResponse.ok) {
-                    alert("Success! Edits saved directly to GitHub. Live site updates in ~60 seconds.");
+                if (saveRes.ok) {
+                    alert("Success! Changes published directly to the site.");
                 } else {
-                    const errData = await putResponse.json();
-                    alert("Save Error: " + errData.message);
+                    const err = await saveRes.json();
+                    alert("Save error: " + (err.message || err.error));
                 }
             } catch (err) {
-                alert(err.message);
-                console.error(err);
+                alert("Error: " + err.message);
             }
 
             btn.innerText = "✏️ Edit Mode";
