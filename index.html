@@ -55,24 +55,33 @@
 
     </main>
 
-    <!-- Floating Edit Button -->
-<button id="edit-btn" onclick="toggleEditMode()" style="position: fixed; bottom: 20px; right: 20px; padding: 10px 18px; background: #1a202c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; z-index: 1000;">
+<!-- Floating Edit Button -->
+<button id="edit-btn" onclick="toggleEditMode()" style="position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; background: #1a202c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
   ✏️ Edit Mode
 </button>
 
 <script>
+  // CONFIGURATION - Fill these out with your details
+  const GITHUB_CONFIG = {
+    owner: 'kh8-y12-english',      // Your organization name
+    repo: 'YOUR-REPO-NAME',         // Replace with your repository name
+    filePath: 'index.html',        // File being edited
+    branch: 'main',                // Main branch
+    // Shared simple password to unlock editing on screen
+    password: 'englishlanguage123',
+    // Paste your GitHub token here
+    token: 'github_pat_YOUR_TOKEN_HERE' 
+  };
+
   let isAuthenticated = false;
-  
-  // SIMPLE PASSWORD PROTECTION (Change "english123" to your preferred password)
-  const SECRET_PASSWORD = "english123";
 
   function toggleEditMode() {
     if (!isAuthenticated) {
-      const input = prompt("Enter the editor password:");
-      if (input === SECRET_PASSWORD) {
+      const input = prompt("Enter the password to edit this page:");
+      if (input === GITHUB_CONFIG.password) {
         isAuthenticated = true;
         enableEditing();
-        alert("Edit mode unlocked! Click on any text paragraph or heading to edit it.");
+        alert("Edit mode active! Click on any section description or text to edit it, then click 'Save Changes'.");
       } else {
         alert("Incorrect password.");
       }
@@ -82,33 +91,77 @@
   }
 
   function enableEditing() {
-    // Make text paragraphs and descriptions editable directly on the screen
     document.querySelectorAll('.topic-description, .main-heading, .essay-content p').forEach(el => {
       el.contentEditable = "true";
-      el.style.border = "1px dashed #2b6cb0";
+      el.style.outline = "2px dashed #2b6cb0";
       el.style.padding = "4px";
       el.style.backgroundColor = "#fffde7";
     });
     
-    document.getElementById('edit-btn').innerText = "🔒 Save & Exit Edit Mode";
-    document.getElementById('edit-btn').onclick = saveChanges;
+    const btn = document.getElementById('edit-btn');
+    btn.innerText = "💾 Save Changes to Live Site";
+    btn.style.backgroundColor = "#2b6cb0";
+    btn.onclick = pushChangesToGitHub;
   }
 
-  function saveChanges() {
-    // Disable editing visually
+  async function pushChangesToGitHub() {
+    const btn = document.getElementById('edit-btn');
+    btn.innerText = "⏳ Saving...";
+    btn.disabled = true;
+
+    // Remove editing highlights before saving HTML
     document.querySelectorAll('[contenteditable]').forEach(el => {
       el.contentEditable = "false";
-      el.style.border = "none";
+      el.style.outline = "none";
       el.style.backgroundColor = "transparent";
     });
 
-    document.getElementById('edit-btn').innerText = "✏️ Edit Mode";
-    document.getElementById('edit-btn').onclick = toggleEditMode;
-    isAuthenticated = false;
+    try {
+      // 1. Get the latest file commit SHA from GitHub
+      const getFileUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
+      const getResponse = await fetch(getFileUrl, {
+        headers: { 'Authorization': `token ${GITHUB_CONFIG.token}` }
+      });
+      const fileData = await getResponse.json();
 
-    alert("Changes saved locally! To make them permanent for everyone, push the updated file or submit via your backend service.");
+      // 2. Get the full updated document HTML
+      const updatedHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+
+      // 3. Convert HTML string to base64 encoding (required by GitHub API)
+      const encodedContent = btoa(unescape(encodeURIComponent(updatedHTML)));
+
+      // 4. Send PUT request to push the new commit directly to main
+      const putResponse = await fetch(getFileUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_CONFIG.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'Updated content via website editor',
+          content: encodedContent,
+          sha: fileData.sha,
+          branch: GITHUB_CONFIG.branch
+        })
+      });
+
+      if (putResponse.ok) {
+        alert("Success! Your edits were pushed directly to GitHub. The live site will refresh in 1-2 minutes.");
+      } else {
+        const errorMsg = await putResponse.json();
+        alert("Error saving changes: " + errorMsg.message);
+      }
+    } catch (err) {
+      alert("Failed to connect to GitHub. Check your internet connection or API token.");
+      console.error(err);
+    }
+
+    btn.innerText = "✏️ Edit Mode";
+    btn.style.backgroundColor = "#1a202c";
+    btn.disabled = false;
+    btn.onclick = toggleEditMode;
+    isAuthenticated = false;
   }
 </script>
-
 </body>
 </html>
