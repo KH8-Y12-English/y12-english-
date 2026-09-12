@@ -66,9 +66,7 @@
             repo: 'y12-english-',
             filePath: 'index.html',
             branch: 'main',
-            password: 'english123',
-            // PASTE YOUR CLASSIC TOKEN (ghp_...) INSIDE THE QUOTES BELOW
-            token: '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' 
+            password: 'englishlanguage123'
         };
 
         let isAuthenticated = false;
@@ -81,6 +79,18 @@
             if (!isAuthenticated) {
                 const input = prompt("Enter the password to edit this page:");
                 if (input === GITHUB_CONFIG.password) {
+                    let savedToken = localStorage.getItem('site_editor_token');
+                    
+                    if (!savedToken) {
+                        savedToken = prompt("First-time setup: Paste your GitHub Personal Access Token (ghp_...):");
+                        if (savedToken) {
+                            localStorage.setItem('site_editor_token', savedToken.trim());
+                        } else {
+                            alert("Token is required to save edits.");
+                            return;
+                        }
+                    }
+                    
                     isAuthenticated = true;
                     enableEditing();
                 } else {
@@ -106,6 +116,13 @@
 
         async function pushChangesToGitHub() {
             const btn = document.getElementById('edit-btn');
+            const token = localStorage.getItem('site_editor_token');
+
+            if (!token) {
+                alert("No saved token found. Please reload and log in again.");
+                return;
+            }
+
             btn.innerText = "⏳ Saving...";
             btn.disabled = true;
 
@@ -119,28 +136,27 @@
             try {
                 const getFileUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
                 
-                // Classic PATs use token authorization format
                 const getResponse = await fetch(getFileUrl, {
                     headers: { 
-                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Authorization': `token ${token}`,
                         'Accept': 'application/vnd.github.v3+json'
                     }
                 });
 
                 if (!getResponse.ok) {
                     const errBody = await getResponse.json().catch(() => ({}));
+                    if (getResponse.status === 401) localStorage.removeItem('site_editor_token');
                     throw new Error(`GitHub Error ${getResponse.status}: ${errBody.message || getResponse.statusText}`);
                 }
                 
                 const fileData = await getResponse.json();
-
                 const updatedHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
                 const encodedContent = utf8_to_b64(updatedHTML);
 
                 const putResponse = await fetch(getFileUrl, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Authorization': `token ${token}`,
                         'Content-Type': 'application/json',
                         'Accept': 'application/vnd.github.v3+json'
                     },
