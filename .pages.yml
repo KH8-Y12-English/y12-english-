@@ -1,0 +1,40 @@
+#media:
+  input: "images"
+  output: "/images"
+
+content:
+  # Edit the Homepage HTML directly
+  - name: homepage
+    label: "Homepage (index.html)"
+    type: file
+    path: "index.html"
+    fields:
+      - name: body
+        label: "Homepage Code"
+        type: code
+        language: html
+
+  # Create and edit Essays using simple form fields
+  - name: essays
+    label: "Essays"
+    type: collection
+    path: "essays"
+    format: "frontmatter"
+    extension: "md"
+    fields:
+      - name: title
+        label: "Essay Title"
+        type: string
+      - name: author
+        label: "Author Name"
+        type: string
+      - name: genre
+        label: "Genre (Informative, Opinion, or Argumentative)"
+        type: string
+      - name: week
+        label: "Week Number (e.g. Week 1)"
+        type: string
+      - name: body
+        label: "Essay Content"
+        type: rich-text
+    
