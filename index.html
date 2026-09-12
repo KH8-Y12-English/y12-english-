@@ -62,18 +62,17 @@
 
     <script>
         const GITHUB_CONFIG = {
-            owner: 'KH8-Y12-English',
+            owner: 'kh8-y12-english',
             repo: 'y12-english-',
             filePath: 'index.html',
             branch: 'main',
-            password: 'english123',
-            // Remember to generate a new token on GitHub and paste it here
-            token: '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' 
+            password: 'englishlanguage123',
+            // PASTE YOUR CLASSIC TOKEN (ghp_...) INSIDE THE QUOTES BELOW
+            token: 'YOUR_CLASSIC_TOKEN_HERE' 
         };
 
         let isAuthenticated = false;
 
-        // UTF-8 Safe Base64 Encoder
         function utf8_to_b64(str) {
             return window.btoa(unescape(encodeURIComponent(str)));
         }
@@ -110,7 +109,6 @@
             btn.innerText = "⏳ Saving...";
             btn.disabled = true;
 
-            // Clean up temporary edit attributes and inline styles before serializing HTML
             document.querySelectorAll('[contenteditable]').forEach(el => {
                 el.removeAttribute('contenteditable');
                 el.style.outline = "";
@@ -119,30 +117,30 @@
             });
 
             try {
-                // Fetch the current file details from GitHub to retrieve its SHA
                 const getFileUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
+                
+                // Classic PATs use token authorization format
                 const getResponse = await fetch(getFileUrl, {
                     headers: { 
-                        'Authorization': `Bearer ${GITHUB_CONFIG.token}`,
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
                         'Accept': 'application/vnd.github.v3+json'
                     }
                 });
 
                 if (!getResponse.ok) {
-                    throw new Error(`Failed to fetch repo details: ${getResponse.statusText}`);
+                    const errBody = await getResponse.json().catch(() => ({}));
+                    throw new Error(`GitHub Error ${getResponse.status}: ${errBody.message || getResponse.statusText}`);
                 }
                 
                 const fileData = await getResponse.json();
 
-                // Capture current document structure
                 const updatedHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
                 const encodedContent = utf8_to_b64(updatedHTML);
 
-                // Send update request via GitHub API
                 const putResponse = await fetch(getFileUrl, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `Bearer ${GITHUB_CONFIG.token}`,
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
                         'Content-Type': 'application/json',
                         'Accept': 'application/vnd.github.v3+json'
                     },
@@ -155,17 +153,16 @@
                 });
 
                 if (putResponse.ok) {
-                    alert("Success! Changes pushed to GitHub. The live site will update in ~60 seconds.");
+                    alert("Success! Edits saved directly to GitHub. Live site updates in ~60 seconds.");
                 } else {
                     const errData = await putResponse.json();
-                    alert("Error saving: " + errData.message);
+                    alert("Save Error: " + errData.message);
                 }
             } catch (err) {
-                alert("Error: " + err.message);
+                alert(err.message);
                 console.error(err);
             }
 
-            // Reset button state
             btn.innerText = "✏️ Edit Mode";
             btn.style.backgroundColor = "#1a202c";
             btn.disabled = false;
