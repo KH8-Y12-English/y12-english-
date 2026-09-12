@@ -55,5 +55,60 @@
 
     </main>
 
+    <!-- Floating Edit Button -->
+<button id="edit-btn" onclick="toggleEditMode()" style="position: fixed; bottom: 20px; right: 20px; padding: 10px 18px; background: #1a202c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; z-index: 1000;">
+  ✏️ Edit Mode
+</button>
+
+<script>
+  let isAuthenticated = false;
+  
+  // SIMPLE PASSWORD PROTECTION (Change "english123" to your preferred password)
+  const SECRET_PASSWORD = "english123";
+
+  function toggleEditMode() {
+    if (!isAuthenticated) {
+      const input = prompt("Enter the editor password:");
+      if (input === SECRET_PASSWORD) {
+        isAuthenticated = true;
+        enableEditing();
+        alert("Edit mode unlocked! Click on any text paragraph or heading to edit it.");
+      } else {
+        alert("Incorrect password.");
+      }
+    } else {
+      disableEditing();
+    }
+  }
+
+  function enableEditing() {
+    // Make text paragraphs and descriptions editable directly on the screen
+    document.querySelectorAll('.topic-description, .main-heading, .essay-content p').forEach(el => {
+      el.contentEditable = "true";
+      el.style.border = "1px dashed #2b6cb0";
+      el.style.padding = "4px";
+      el.style.backgroundColor = "#fffde7";
+    });
+    
+    document.getElementById('edit-btn').innerText = "🔒 Save & Exit Edit Mode";
+    document.getElementById('edit-btn').onclick = saveChanges;
+  }
+
+  function saveChanges() {
+    // Disable editing visually
+    document.querySelectorAll('[contenteditable]').forEach(el => {
+      el.contentEditable = "false";
+      el.style.border = "none";
+      el.style.backgroundColor = "transparent";
+    });
+
+    document.getElementById('edit-btn').innerText = "✏️ Edit Mode";
+    document.getElementById('edit-btn').onclick = toggleEditMode;
+    isAuthenticated = false;
+
+    alert("Changes saved locally! To make them permanent for everyone, push the updated file or submit via your backend service.");
+  }
+</script>
+
 </body>
 </html>
