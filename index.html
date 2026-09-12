@@ -55,113 +55,122 @@
 
     </main>
 
-<!-- Floating Edit Button -->
-<button id="edit-btn" onclick="toggleEditMode()" style="position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; background: #1a202c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
-  ✏️ Edit Mode
-</button>
+    <!-- Floating Edit Button -->
+    <button id="edit-btn" onclick="toggleEditMode()" style="position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; background: #1a202c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
+        ✏️ Edit Mode
+    </button>
 
-<script>
-  // CONFIGURATION - Fill these out with your details
-  const GITHUB_CONFIG = {
-    owner: 'kh8-y12-english',      // Your organization name
-    repo: 'y12-english-',         // Replace with your repository name
-    filePath: 'index.html',        // File being edited
-    branch: 'main',                // Main branch
-    // Shared simple password to unlock editing on screen
-    password: 'englishlanguage123',
-    // Paste your GitHub token here
-    token: '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' 
-  };
+    <script>
+        const GITHUB_CONFIG = {
+            owner: 'KH8-Y12-English',
+            repo: 'y12-english-',
+            filePath: 'index.html',
+            branch: 'main',
+            password: 'english123',
+            // Remember to generate a new token on GitHub and paste it here
+            token: 'YOUR_NEW_GITHUB_TOKEN' 
+        };
 
-  let isAuthenticated = false;
+        let isAuthenticated = false;
 
-  function toggleEditMode() {
-    if (!isAuthenticated) {
-      const input = prompt("Enter the password to edit this page:");
-      if (input === GITHUB_CONFIG.password) {
-        isAuthenticated = true;
-        enableEditing();
-        alert("Edit mode active! Click on any section description or text to edit it, then click 'Save Changes'.");
-      } else {
-        alert("Incorrect password.");
-      }
-    } else {
-      disableEditing();
-    }
-  }
+        // UTF-8 Safe Base64 Encoder
+        function utf8_to_b64(str) {
+            return window.btoa(unescape(encodeURIComponent(str)));
+        }
 
-  function enableEditing() {
-    document.querySelectorAll('.topic-description, .main-heading, .essay-content p').forEach(el => {
-      el.contentEditable = "true";
-      el.style.outline = "2px dashed #2b6cb0";
-      el.style.padding = "4px";
-      el.style.backgroundColor = "#fffde7";
-    });
-    
-    const btn = document.getElementById('edit-btn');
-    btn.innerText = "💾 Save Changes to Live Site";
-    btn.style.backgroundColor = "#2b6cb0";
-    btn.onclick = pushChangesToGitHub;
-  }
+        function toggleEditMode() {
+            if (!isAuthenticated) {
+                const input = prompt("Enter the password to edit this page:");
+                if (input === GITHUB_CONFIG.password) {
+                    isAuthenticated = true;
+                    enableEditing();
+                } else {
+                    alert("Incorrect password.");
+                }
+            } else {
+                pushChangesToGitHub();
+            }
+        }
 
-  async function pushChangesToGitHub() {
-    const btn = document.getElementById('edit-btn');
-    btn.innerText = "⏳ Saving...";
-    btn.disabled = true;
+        function enableEditing() {
+            document.querySelectorAll('.topic-description, .main-heading, .essay-content p').forEach(el => {
+                el.contentEditable = "true";
+                el.style.outline = "2px dashed #2b6cb0";
+                el.style.padding = "4px";
+                el.style.backgroundColor = "#fffde7";
+            });
+            
+            const btn = document.getElementById('edit-btn');
+            btn.innerText = "💾 Save Changes to Live Site";
+            btn.style.backgroundColor = "#2b6cb0";
+        }
 
-    // Remove editing highlights before saving HTML
-    document.querySelectorAll('[contenteditable]').forEach(el => {
-      el.contentEditable = "false";
-      el.style.outline = "none";
-      el.style.backgroundColor = "transparent";
-    });
+        async function pushChangesToGitHub() {
+            const btn = document.getElementById('edit-btn');
+            btn.innerText = "⏳ Saving...";
+            btn.disabled = true;
 
-    try {
-      // 1. Get the latest file commit SHA from GitHub
-      const getFileUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
-      const getResponse = await fetch(getFileUrl, {
-        headers: { 'Authorization': `token ${GITHUB_CONFIG.token}` }
-      });
-      const fileData = await getResponse.json();
+            // Clean up temporary edit attributes and inline styles before serializing HTML
+            document.querySelectorAll('[contenteditable]').forEach(el => {
+                el.removeAttribute('contenteditable');
+                el.style.outline = "";
+                el.style.padding = "";
+                el.style.backgroundColor = "";
+            });
 
-      // 2. Get the full updated document HTML
-      const updatedHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            try {
+                // Fetch the current file details from GitHub to retrieve its SHA
+                const getFileUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
+                const getResponse = await fetch(getFileUrl, {
+                    headers: { 
+                        'Authorization': `Bearer ${GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
 
-      // 3. Convert HTML string to base64 encoding (required by GitHub API)
-      const encodedContent = btoa(unescape(encodeURIComponent(updatedHTML)));
+                if (!getResponse.ok) {
+                    throw new Error(`Failed to fetch repo details: ${getResponse.statusText}`);
+                }
+                
+                const fileData = await getResponse.json();
 
-      // 4. Send PUT request to push the new commit directly to main
-      const putResponse = await fetch(getFileUrl, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `token ${GITHUB_CONFIG.token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: 'Updated content via website editor',
-          content: encodedContent,
-          sha: fileData.sha,
-          branch: GITHUB_CONFIG.branch
-        })
-      });
+                // Capture current document structure
+                const updatedHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+                const encodedContent = utf8_to_b64(updatedHTML);
 
-      if (putResponse.ok) {
-        alert("Success! Your edits were pushed directly to GitHub. The live site will refresh in 1-2 minutes.");
-      } else {
-        const errorMsg = await putResponse.json();
-        alert("Error saving changes: " + errorMsg.message);
-      }
-    } catch (err) {
-      alert("Failed to connect to GitHub. Check your internet connection or API token.");
-      console.error(err);
-    }
+                // Send update request via GitHub API
+                const putResponse = await fetch(getFileUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${GITHUB_CONFIG.token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Update page content via inline editor',
+                        content: encodedContent,
+                        sha: fileData.sha,
+                        branch: GITHUB_CONFIG.branch
+                    })
+                });
 
-    btn.innerText = "✏️ Edit Mode";
-    btn.style.backgroundColor = "#1a202c";
-    btn.disabled = false;
-    btn.onclick = toggleEditMode;
-    isAuthenticated = false;
-  }
-</script>
+                if (putResponse.ok) {
+                    alert("Success! Changes pushed to GitHub. The live site will update in ~60 seconds.");
+                } else {
+                    const errData = await putResponse.json();
+                    alert("Error saving: " + errData.message);
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+                console.error(err);
+            }
+
+            // Reset button state
+            btn.innerText = "✏️ Edit Mode";
+            btn.style.backgroundColor = "#1a202c";
+            btn.disabled = false;
+            isAuthenticated = false;
+        }
+    </script>
 </body>
 </html>
